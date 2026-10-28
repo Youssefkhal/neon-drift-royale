@@ -17,7 +17,13 @@ body{color:var(--tx);font-family:"Share Tech Mono",monospace;font-size:16px}
 #vig{position:fixed;inset:0;pointer-events:none;z-index:3;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.55) 100%)}
 .ov{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;pointer-events:none}
 .ov.scrim{background:rgba(5,3,13,.6)}
-#title{align-items:flex-end;padding-bottom:5vh}
+#title{align-items:flex-start;overflow-y:auto;pointer-events:auto}
+#title .panel{margin:auto}
+.logo{margin:0 0 14px;text-align:center;font:800 clamp(34px,9vw,64px)/1 Orbitron,"Share Tech Mono",monospace;letter-spacing:.04em;color:var(--tx);
+  text-shadow:-3px 0 0 rgba(255,63,210,.85),3px 0 0 rgba(63,246,255,.85),0 0 18px rgba(63,246,255,.6);animation:logoShift 3s ease-in-out infinite}
+.logo span{display:block;margin-top:6px;font-size:.48em;letter-spacing:.3em;color:var(--am);text-shadow:0 0 14px rgba(255,182,39,.8)}
+@keyframes logoShift{50%{text-shadow:-1.5px 0 0 rgba(255,63,210,.85),1.5px 0 0 rgba(63,246,255,.85),0 0 22px rgba(63,246,255,.7)}}
+@media (prefers-reduced-motion:reduce){.logo{animation:none}}
 .panel{pointer-events:auto;background:rgba(10,6,28,.88);border:1px solid var(--cy);border-radius:10px;box-shadow:0 0 18px rgba(63,246,255,.35),inset 0 0 22px rgba(255,63,210,.12);padding:16px 18px;width:100%;max-width:460px;max-height:100%;overflow:auto;box-sizing:border-box;-webkit-overflow-scrolling:touch}
 .panel.plain{background:transparent;border-color:transparent;box-shadow:none;overflow:visible}
 h2{font-family:Orbitron,"Share Tech Mono",monospace;font-weight:800;font-size:22px;letter-spacing:.06em;color:var(--cy);text-shadow:0 0 10px var(--cy);margin:4px 0 12px}
@@ -49,6 +55,13 @@ input[type=range]{width:100%;accent-color:var(--mg);min-height:30px}
 #upgrades{position:fixed;left:0;right:0;bottom:8px;z-index:9;display:flex;justify-content:center;gap:10px;padding:0 10px;pointer-events:none;flex-wrap:wrap}
 .upcard{pointer-events:auto;width:min(210px,31vw);min-width:96px;min-height:66px;padding:7px 9px;background:rgba(10,6,28,.88);border:1px solid var(--am);border-radius:8px;box-shadow:0 0 14px rgba(255,182,39,.4);color:var(--tx);font:13px "Share Tech Mono",monospace;text-align:left;cursor:pointer}
 .upcard b{display:block;font:800 13px Orbitron,monospace;color:var(--am);letter-spacing:.05em;margin-bottom:3px}
+.pilot{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.pilot-name{flex:1 1 170px;min-width:0}
+.pilot-col{flex:0 1 auto}
+.pilot .swrow{margin:0;gap:7px}
+.pilot .sw{width:34px;height:34px}
+#titleName{border-color:var(--mg);font-size:18px;letter-spacing:.06em}
+#titleName.bad{border-color:#ff4d6d;box-shadow:0 0 10px rgba(255,77,109,.6)}
 @media (max-width:420px){.grid2{grid-template-columns:1fr}}
 </style>
 </head>
@@ -59,6 +72,18 @@ input[type=range]{width:100%;accent-color:var(--mg);min-height:30px}
 
 <div id="title" class="ov">
   <div class="panel plain">
+    <h1 class="logo">NEON DRIFT<span>ROYALE</span></h1>
+    <div class="pilot">
+      <div class="pilot-name">
+        <label class="lbl" for="titleName">USERNAME</label>
+        <input type="text" id="titleName" maxlength="14" autocomplete="off" spellcheck="false" placeholder="Enter a username">
+      </div>
+      <div class="pilot-col">
+        <div class="lbl" id="titleColLbl">SHIP COLOUR</div>
+        <div class="swrow" id="titleSwatches" role="group" aria-labelledby="titleColLbl"></div>
+      </div>
+    </div>
+    <div class="small" id="nameNote" role="status" aria-live="polite" style="color:var(--am);min-height:1.2em"></div>
     <button class="btn" id="btnSolo">SOLO vs BOTS</button>
     <button class="btn cy" id="btnOnline" disabled>ONLINE MATCH</button>
     <button class="btn cy" id="btnTabs">SAME-BROWSER TABS</button>
@@ -265,7 +290,7 @@ function saveBest() {
 /* ===================== SHARED STATE ===================== */
 let S = loadSettings();                 // player + match + graphics settings
 let BEST = loadBest();                  // persisted stats
-if (!S.name) S.name = 'PILOT-' + String(Math.floor(rand(100, 999)));
+// New players start with an empty username and must choose one on the title screen.
 
 const G = {
   screen: 'title',      // 'title' | 'game'
@@ -2502,6 +2527,7 @@ function drawTitleScene(dt) {
   ctx.globalAlpha = 0.45;
   drawRocks(G.titleRocks);
   ctx.restore();
+  return;   // the logo is drawn by the HTML title panel so it never overlaps the menu
   const u = Math.min(W, H), ts = clamp(Math.min(u * 0.13, W / 8.6), 26, 92);
   const y1 = H * 0.2;
   const f1 = '800 ' + ts + 'px ' + ORB;
@@ -2570,8 +2596,9 @@ function onEscape() {
 }
 
 /* ---------- Settings ---------- */
-function buildSwatches() {
-  const box = $('swatches');
+function buildSwatches() { buildSwatchRow('swatches'); buildSwatchRow('titleSwatches'); }
+function buildSwatchRow(boxId) {
+  const box = $(boxId);
   box.textContent = '';
   CONFIG.colours.forEach((hex, i) => {
     const b = document.createElement('button');
@@ -2602,8 +2629,33 @@ function syncSettingsUI() {
   $('setShake').checked = S.shake;
   $('setDmgNum').checked = S.dmgNums;
   $('setFps').checked = S.fps;
-  const btns = $('swatches').querySelectorAll('.sw');
-  btns.forEach((b, i) => b.setAttribute('aria-pressed', String(S.colour === i)));
+  for (const id of ['swatches', 'titleSwatches']) {
+    $(id).querySelectorAll('.sw').forEach((b, i) => b.setAttribute('aria-pressed', String(S.colour === i)));
+  }
+  if (document.activeElement !== $('titleName')) $('titleName').value = S.name;
+}
+
+/* Username on the title screen: must be set before joining any match. */
+function setName(v) {
+  S.name = String(v).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14);
+  saveSettings();
+  if (G.me && S.name) G.me.name = S.name;
+  if (document.activeElement !== $('setName')) $('setName').value = S.name;
+  if (document.activeElement !== $('titleName')) $('titleName').value = S.name;
+  updatePilotLine();
+}
+function requireName() {
+  const v = $('titleName').value.replace(/[\u0000-\u001f<>]/g, '').trim();
+  if (v.length < 2) {
+    $('nameNote').textContent = 'Choose a username (2 to 14 characters) to play.';
+    $('titleName').classList.add('bad');
+    $('titleName').focus();
+    return false;
+  }
+  setName(v);
+  $('nameNote').textContent = '';
+  $('titleName').classList.remove('bad');
+  return true;
 }
 
 function bindSettings() {
@@ -2645,7 +2697,7 @@ function bindSettings() {
 }
 
 function updatePilotLine() {
-  $('pilotLine').textContent = 'PILOT: ' + S.name + '  |  WINS ' + BEST.wins + '  |  BEST KILLS ' + BEST.kills + '  |  MATCHES ' + BEST.plays;
+  $('pilotLine').textContent = 'PILOT: ' + (S.name || 'not set') + '  |  WINS ' + BEST.wins + '  |  BEST KILLS ' + BEST.kills + '  |  MATCHES ' + BEST.plays;
 }
 
 /* ---------- Overlays: lobby, results, pause, upgrades ---------- */
@@ -2786,9 +2838,15 @@ function refreshUI() {
 
 /* ---------- Buttons ---------- */
 function bindButtons() {
-  $('btnSolo').addEventListener('click', () => { startSolo(); });
-  $('btnTabs').addEventListener('click', () => { startNet('tabs', roomCode()); });
+  $('titleName').addEventListener('input', () => {
+    setName($('titleName').value);
+    if ($('titleName').value.trim().length >= 2) { $('titleName').classList.remove('bad'); $('nameNote').textContent = ''; }
+  });
+  $('titleName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (requireName()) $('btnSolo').focus(); } });
+  $('btnSolo').addEventListener('click', () => { if (requireName()) startSolo(); });
+  $('btnTabs').addEventListener('click', () => { if (requireName()) startNet('tabs', roomCode()); });
   $('btnOnline').addEventListener('click', () => {
+    if (!requireName()) return;
     if (!ROOM_API && typeof Peer !== 'function') return;
     startNet('online', roomCode());
   });
